@@ -87,4 +87,12 @@ class FilterByMixin(object):
 
 
     def set_filters(self, *filters):
-        self.filters.extend(filters)
+        flts = []
+        for filter_ in filters:
+            if isinstance(filter_, SQLFilter):
+                self.filters.append(filter_)
+            else:
+                flts.append(filter_)
+
+        if flts:
+            self.filters.append(self.create_and_filter(*flts))

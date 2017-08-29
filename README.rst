@@ -8,7 +8,9 @@ Summary
 -------
 
 This project is meant to be used for psycopg2.
-Example using aiopg:
+
+Example:
+
 
 .. code:: python
 
@@ -25,6 +27,7 @@ Example using aiopg:
                 'is_superuser', 'is_staff')
 
         SELECT_FIELDS = ('id', 'username', 'email')
+        UPDATE_FIELDS = ('is_superuser', 'is_staff', 'modified_at')
 
 
 .. code:: python
@@ -62,6 +65,21 @@ Example using aiopg:
         page = 1
         page_offset = (page - 1) * page_size
         sql.set_limit(page_size, page_offset)
+
+        with psycopg2.connect('dbname=testdb') as conn:
+            with conn.cursor() as cur:
+                cur.execute(str(sql), sql.data)
+
+
+    def update():
+        sql = UserSchema.create_update_sql()
+
+        sql.set_values(
+                is_superuser=True,
+                is_staff=True)
+
+        sql.set_filters(
+                ('username', 'User1', '='))
 
         with psycopg2.connect('dbname=testdb') as conn:
             with conn.cursor() as cur:
