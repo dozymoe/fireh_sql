@@ -28,5 +28,5 @@ class InsertSQL(SQL):
         return 'INSERT INTO %s(%s) VALUES(%s) RETURNING %s'  % (
                 self.schema.TABLE_NAME,
                 ', '.join(self.fields.keys()),
-                ', '.join(['%s'] * len(self.fields)),
+                ', '.join([self.schema.PLACEHOLDER] * len(self.fields)),
                 self.schema.literal_primary_key())

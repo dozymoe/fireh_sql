@@ -51,12 +51,13 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
             'FROM ' + self.schema.TABLE_NAME,
         ]
 
-        if self.filters:
-            sql.append('WHERE ' + ' AND '.join(str(filter_)\
-                    for filter_ in self.filters))
+        expression = ' AND '.join(str(filter_) for filter_ in self.filters)
+        if expression:
+            sql.append('WHERE ' + expression)
 
-        if self.order_fields:
-            sql.append('ORDER BY ' + ', '.join(self.order_fields))
+        expression = ', '.join(self.order_fields)
+        if expression:
+            sql.append('ORDER BY ' + expression)
 
         sql.append('LIMIT %i OFFSET %i' % (self.page_size, self.page_offset))
 

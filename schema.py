@@ -18,6 +18,8 @@ class SchemaBase(object):
     INSERT_SQL_CLASS = InsertSQL
     SELECT_SQL_CLASS = SelectSQL
 
+    PLACEHOLDER = '%s' # used by psycopg2, and '?' for sqlite3
+
 
     @classmethod
     def literal_primary_key(cls):

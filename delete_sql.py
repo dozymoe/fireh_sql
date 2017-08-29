@@ -15,8 +15,8 @@ class DeleteSQL(SQL, FilterByMixin):
             'DELETE FROM ' + self.schema.TABLE_NAME,
         ]
 
-        if self.filters:
-            sql.append('WHERE ' + ' AND '.join(str(filter_)\
-                    for filter_ in self.filters))
+        expression = ' AND '.join(str(filter_) for filter_ in self.filters)
+        if expression:
+            sql.append('WHERE ' + expression)
 
         return ' '.join(sql)
