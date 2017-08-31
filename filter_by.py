@@ -15,7 +15,12 @@ class SQLFilter(object):
 
         if isinstance(field_tuple, SQLFilter):
             self.fields.append(field_tuple)
-        elif field_tuple[0] in self.schema.FILTER_BY_FIELDS:
+
+        elif (self.schema.FILTER_BY_FIELDS and\
+                field_tuple[0] in self.schema.FILTER_BY_FIELDS) or\
+                (not self.schema.FILTER_BY_FIELDS and\
+                field_tuple[0] in self.schema.FIELDS):
+
             self.fields.append(field_tuple)
         else:
             raise RuntimeError('Invalid field: %s for table: %s.' % (

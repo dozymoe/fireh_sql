@@ -7,7 +7,8 @@ FirehSQL
 Summary
 -------
 
-This project is meant to be used for psycopg2.
+Simple SQL Query Builder, doesn't support CREATE TABLE, field definition and
+whatnot, the library only observed the table field names.
 
 Example:
 
@@ -20,14 +21,14 @@ Example:
 
         TABLE_NAME = 'users'
 
+        FIELDS = ('id', 'username', 'email', 'password', 'is_superuser',
+                'is_staff', 'created_at', 'modified_at')
+
         FILTER_BY_FIELDS = ('id', 'username', 'email')
         ORDER_BY_FIELDS = ('username',)
 
-        INSERT_FIELDS = ('username', 'email', 'password', 'modified_at',
-                'is_superuser', 'is_staff')
-
-        SELECT_FIELDS = ('id', 'username', 'email')
-        UPDATE_FIELDS = ('is_superuser', 'is_staff', 'modified_at')
+        # For PostgreSQL to return last inserted id
+        RETURNING_FIELDS = ('id',)
 
 
 .. code:: python
@@ -45,6 +46,10 @@ Example:
 
         with psycopg2.connect('dbname=testdb') as conn:
             with conn.cursor() as cur:
+                # INSERT INTO users (username, password, email)
+                #     VALUES (%s, %s, %s)
+                #
+                # ('User1', 'User1Password', 'User1@example.com')
                 cur.execute(str(sql), sql.data)
                 
             conn.commit()
@@ -54,20 +59,30 @@ Example:
         sql = UserSchema.create_select_sql()
 
         filter_ = sql.create_or_filter()
+        # The word 'LIKE' will not be checked if it was valid or not,
+        # too bothersome, just don't put user's input in there.
         filter_.add(('username', 'Ach%', 'LIKE'))
         filter_.add(('username', 'Abd%', 'LIKE'))
         sql.set_filters(filter_)
 
+        # Assumed DESCENDING if it was prefixed with hyphen (-), the target
+        # being http query string.
         for sort_field in ('username', '-id'):
             sql.add_order_by(sort_field)
 
         page_size = 10
         page = 1
         page_offset = (page - 1) * page_size
+        # Both page_size and page_offset tested to be of type integer.
         sql.set_limit(page_size, page_offset)
 
         with psycopg2.connect('dbname=testdb') as conn:
             with conn.cursor() as cur:
+                # SELECT * FROM users WHERE username LIKE %s
+                #     OR username LIKE %s ORDER BY username, id DESC
+                #     LIMIT 10 OFFSET 0
+                #
+                # ('Ach%', 'Abd%')
                 cur.execute(str(sql), sql.data)
 
 
@@ -78,9 +93,14 @@ Example:
                 is_superuser=True,
                 is_staff=True)
 
+        # '=' will not be checked if it was valid operand or not.
         sql.set_filters(
                 ('username', 'User1', '='))
 
         with psycopg2.connect('dbname=testdb') as conn:
             with conn.cursor() as cur:
+                # UPDATE users SET is_superuser=%s, is_staff=%s
+                #     WHERE username = %s
+                #
+                # (True, True, 'User1')
                 cur.execute(str(sql), sql.data)

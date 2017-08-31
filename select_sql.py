@@ -19,7 +19,11 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
     def set_fields(self, *fields):
         for field in fields:
-            if field in self.schema.SELECT_FIELDS:
+            if (self.schema.SELECT_FIELDS and\
+                    field in self.schema.SELECT_FIELDS) or\
+                    (not self.schema.SELECT_FIELDS and\
+                    field in self.schema.FIELDS):
+
                 self.fields.append(field)
             else:
                 raise RuntimeError('Invalid field: %s for table: %s.' % (

@@ -12,7 +12,11 @@ class InsertSQL(SQL):
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
-            if key in self.schema.INSERT_FIELDS:
+            if (self.schema.INSERT_FIELDS and\
+                    key in self.schema.INSERT_FIELDS) or\
+                    (not self.schema.INSERT_FIELDS and\
+                    key in self.schema.FIELDS):
+
                 self.fields[key] = value
             else:
                 raise RuntimeError('Invalid field: %s for table: %s.' % (
@@ -25,8 +29,14 @@ class InsertSQL(SQL):
 
 
     def __str__(self):
-        return 'INSERT INTO %s(%s) VALUES(%s) RETURNING %s'  % (
-                self.schema.TABLE_NAME,
-                ', '.join(self.fields.keys()),
-                ', '.join([self.schema.PLACEHOLDER] * len(self.fields)),
-                self.schema.literal_primary_key())
+        sql = [
+            'INSERT INTO ' + self.schema.TABLE_NAME,
+            '(%s)' % ', '.join(self.fields.keys()),
+            'VALUES (%s)' % ', '.join([self.schema.PLACEHOLDER] *\
+                    len(self.fields)),
+        ]
+
+        if self.schema.RETURNING_FIELDS:
+            sql.append('RETURNING ' + ', '.join(self.schema.RETURNING_FIELDS))
+
+        return ' '.join(sql)

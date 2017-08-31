@@ -13,7 +13,11 @@ class UpdateSQL(SQL, FilterByMixin):
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
-            if key in self.schema.UPDATE_FIELDS:
+            if (self.schema.UPDATE_FIELDS and\
+                    key in self.schema.UPDATE_FIELDS) or\
+                    (not self.schema.UPDATE_FIELDS and\
+                    key in self.schema.FIELDS):
+
                 self.fields[key] = value
             else:
                 raise RuntimeError('Invalid field: %s for table: %s.' % (
