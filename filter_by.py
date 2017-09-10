@@ -33,6 +33,8 @@ class SQLFilter(object):
             if isinstance(field_tuple, SQLFilter):
                 for data in field_tuple.data:
                     yield data
+            elif field_tuple[1] is None:
+                pass
             elif isinstance(field_tuple[1], (list, tuple)):
                 for data in field_tuple[1]:
                     yield data
@@ -48,14 +50,18 @@ class SQLFilter(object):
                 if filter_expression:
                     filters.append('(%s)' % filter_expression)
 
+            elif field_tuple[1] is None:
+                filters.append('"%s" %s NULL' % (field_tuple[0],
+                        field_tuple[2]))
+
             elif isinstance(field_tuple[1], (list, tuple)):
                 if field_tuple[1]:
-                    filters.append(field_tuple[0] + ' ' + field_tuple[2] +\
-                        ' (' + ', '.join([self.schema.PLACEHOLDER] *\
-                        len(field_tuple[1])) + ')')
+                    filters.append('"%s" %s (%s)' % (field_tuple[0],
+                        field_tuple[2], ', '.join([self.schema.PLACEHOLDER] *\
+                        len(field_tuple[1]))))
             else:
-                filters.append(field_tuple[0] + ' ' + field_tuple[2] + ' ' +\
-                        self.schema.PLACEHOLDER)
+                filters.append('"%s" %s %s' % (field_tuple[0], field_tuple[2],
+                        self.schema.PLACEHOLDER))
 
         return self.separator.join(filters)
 
