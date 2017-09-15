@@ -51,3 +51,61 @@ class SchemaBase(object):
     @classmethod
     def create_update_sql(cls):
         return cls.UPDATE_SQL_CLASS(cls)
+
+
+    @classmethod
+    def validate_field_name(cls, name):
+        is_valid = name in cls.FIELDS
+        if not is_valid:
+            raise ValueError('Invalid field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))
+
+
+    @classmethod
+    def validate_insert_field_name(cls, name):
+        is_valid = (cls.INSERT_FIELDS and name in cls.INSERT_FIELDS) or\
+                (not cls.INSERT_FIELDS and name in cls.FIELDS)
+
+        if not is_valid:
+            raise ValueError('Invalid INSERT field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))
+
+
+    @classmethod
+    def validate_select_field_name(cls, name):
+        is_valid = (cls.SELECT_FIELDS and name in cls.SELECT_FIELDS) or\
+                (not cls.SELECT_FIELDS and name in cls.FIELDS)
+
+        if not is_valid:
+            raise ValueError('Invalid SELECT field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))
+
+
+    @classmethod
+    def validate_update_field_name(cls, name):
+        is_valid = (cls.UPDATE_FIELDS and name in cls.UPDATE_FIELDS) or\
+                (not cls.UPDATE_FIELDS and name in cls.FIELDS)
+
+        if not is_valid:
+            raise ValueError('Invalid UPDATE field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))
+
+
+    @classmethod
+    def validate_filter_field_name(cls, name):
+        is_valid = (cls.FILTER_BY_FIELDS and name in cls.FILTER_BY_FIELDS) or\
+                (not cls.FILTER_BY_FIELDS and name in cls.FIELDS)
+
+        if not is_valid:
+            raise ValueError('Invalid WHERE field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))
+
+
+    @classmethod
+    def validate_order_field_name(cls, name):
+        is_valid = (cls.ORDER_BY_FIELDS and name in cls.ORDER_BY_FIELDS) or\
+                (not cls.ORDER_BY_FIELDS and name in cls.FIELDS)
+
+        if not is_valid:
+            raise ValueError('Invalid ORDER BY field: %s for table: %s.' % (
+                    name, cls.TABLE_NAME))

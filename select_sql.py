@@ -1,3 +1,4 @@
+from .expressions import Expression
 from .filter_by import FilterByMixin
 from .order_by import OrderByMixin
 from .sql import SQL
@@ -11,27 +12,27 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
     def __init__(self, schema):
         super().__init__(schema=schema)
-
         self.fields = []
-        self.page_size = 20
-        self.page_offset = 0
+
+
+    def clear_fields(self):
+        self.fields = []
 
 
     def set_fields(self, *fields):
         for field in fields:
-            if (self.schema.SELECT_FIELDS and\
-                    field in self.schema.SELECT_FIELDS) or\
-                    (not self.schema.SELECT_FIELDS and\
-                    field in self.schema.FIELDS):
-
-                self.fields.append(field)
+            if isinstance(field, Expression):
+                field.validate_as_field(self.schema)
             else:
-                raise RuntimeError('Invalid field: %s for table: %s.' % (
-                        field, self.schema.TABLE_NAME))
+                self.schema.validate_select_field_name(field)
+
+            self.fields.append(field)
 
 
-    def set_limit(self, size=None, offset=None):
-        if size is not None:
+    def set_limit(self, size, offset=None):
+        if size is None:
+            self.page_size = None
+        else:
             self.page_size = int(size)
 
         if offset is not None:
@@ -39,6 +40,11 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
 
     def get_data(self):
+        for field in self.fields:
+            if isinstance(field, Expression):
+                for data in field.get_data():
+                    yield data
+
         for filter_ in self.filters:
             for data in filter_.data:
                 yield data
@@ -46,7 +52,7 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
     def __str__(self):
         if self.fields:
-            fields = ', '.join(self.fields)
+            fields = ', '.join(str(f) for f in self.fields)
         else:
             fields = '*'
 
@@ -63,6 +69,8 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
         if expression:
             sql.append('ORDER BY ' + expression)
 
-        sql.append('LIMIT %i OFFSET %i' % (self.page_size, self.page_offset))
+        if self.page_size and self.page_size > 0:
+            sql.append('LIMIT %i OFFSET %i' % (self.page_size,
+                    self.page_offset))
 
         return ' '.join(sql)

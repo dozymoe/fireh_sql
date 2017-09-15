@@ -1,3 +1,4 @@
+from .expressions import Expression
 from .filter_by import FilterByMixin
 from .sql import SQL
 
@@ -13,20 +14,21 @@ class UpdateSQL(SQL, FilterByMixin):
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
-            if (self.schema.UPDATE_FIELDS and\
-                    key in self.schema.UPDATE_FIELDS) or\
-                    (not self.schema.UPDATE_FIELDS and\
-                    key in self.schema.FIELDS):
+            self.schema.validate_update_field_name(key)
+            if isinstance(value, Expression):
+                value.validate_as_field(self.schema)
 
-                self.fields[key] = value
-            else:
-                raise RuntimeError('Invalid field: %s for table: %s.' % (
-                        key, self.schema.TABLE_NAME))
+            self.fields[key] = value
 
 
     def get_data(self):
-        for data in self.fields.values():
-            yield data
+        for value in self.fields.values():
+            if isinstance(value, Expression):
+                for data in value.get_data():
+                    yield data
+            else:
+                yield value
+
         for filter_ in self.filters:
             for data in filter_.data:
                 yield data
@@ -37,11 +39,14 @@ class UpdateSQL(SQL, FilterByMixin):
             'UPDATE ' + self.schema.TABLE_NAME,
         ]
 
-        expression = ', '.join(key + '=' + self.schema.PLACEHOLDER\
-                for key in self.fields)
-
-        if expression:
-            sql.append('SET ' + expression)
+        expressions = []
+        for key, value in self.fields:
+            if isinstance(value, Expression):
+                expressions.append('%s=%s' % (key, str(value)))
+            else:
+                expressions.append('%s=%s' % (key, self.schema.PLACEHOLDER))
+        if expressions:
+            sql.append('SET ' + ', '.join(expressions))
 
         expression = ' AND '.join(str(filter_) for filter_ in self.filters)
         if expression:

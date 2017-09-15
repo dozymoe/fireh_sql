@@ -1,3 +1,4 @@
+from .expressions import Expression
 from .sql import SQL
 
 
@@ -12,29 +13,35 @@ class InsertSQL(SQL):
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
-            if (self.schema.INSERT_FIELDS and\
-                    key in self.schema.INSERT_FIELDS) or\
-                    (not self.schema.INSERT_FIELDS and\
-                    key in self.schema.FIELDS):
+            self.schema.validate_insert_field_name(key)
+            if isinstance(value, Expression):
+                self.schema.validate_as_field(value)
 
-                self.fields[key] = value
-            else:
-                raise RuntimeError('Invalid field: %s for table: %s.' % (
-                        key, self.schema.TABLE_NAME))
+            self.fields[key] = value
 
 
     def get_data(self):
-        for data in self.fields.values():
-            yield data
+        for value in self.fields.values():
+            if isinstance(value, Expression):
+                for expr_data in value.get_data():
+                    yield expr_data
+            else:
+                yield value
 
 
     def __str__(self):
         sql = [
             'INSERT INTO ' + self.schema.TABLE_NAME,
             '(%s)' % ', '.join(self.fields.keys()),
-            'VALUES (%s)' % ', '.join([self.schema.PLACEHOLDER] *\
-                    len(self.fields)),
         ]
+
+        values = []
+        for value in self.fields.values():
+            if isinstance(value, Expression):
+                values.append(str(value))
+            else:
+                values.append(self.schema.PLACEHOLDER)
+        sql.append('VALUES (%s)' % ', '.join(values))
 
         if self.schema.RETURNING_FIELDS:
             sql.append('RETURNING ' + ', '.join(self.schema.RETURNING_FIELDS))

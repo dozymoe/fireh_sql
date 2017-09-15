@@ -1,3 +1,5 @@
+from .expressions import Expression
+
 class SQLFilter(object):
 
     schema = None
@@ -10,21 +12,18 @@ class SQLFilter(object):
 
 
     def add(self, field_tuple):
-        if len(field_tuple) == 2:
-            field_tuple = (field_tuple[0], field_tuple[1], '=')
-
         if isinstance(field_tuple, SQLFilter):
             self.fields.append(field_tuple)
 
-        elif (self.schema.FILTER_BY_FIELDS and\
-                field_tuple[0] in self.schema.FILTER_BY_FIELDS) or\
-                (not self.schema.FILTER_BY_FIELDS and\
-                field_tuple[0] in self.schema.FIELDS):
+        elif isinstance(field_tuple, (list, tuple)):
+            self.schema.validate_filter_field_name(field_tuple[0])
+            if isinstance(field_tuple[1], Expression):
+                field_tuple[1].validate_as_filter(self.schema)
 
             self.fields.append(field_tuple)
+
         else:
-            raise RuntimeError('Invalid field: %s for table: %s.' % (
-                    field_tuple[0], self.schema.TABLE_NAME))
+            raise TypeError('Expecting SQLFilter, list, or tuple.')
 
 
     @property
@@ -35,6 +34,9 @@ class SQLFilter(object):
                     yield data
             elif field_tuple[1] is None:
                 pass
+            elif isinstance(field_tuple[1], Expression):
+                for data in field_tuple[1].get_data():
+                    yield data
             elif isinstance(field_tuple[1], (list, tuple)):
                 for data in field_tuple[1]:
                     yield data
@@ -49,19 +51,29 @@ class SQLFilter(object):
                 filter_expression = str(field_tuple)
                 if filter_expression:
                     filters.append('(%s)' % filter_expression)
+                continue
 
-            elif field_tuple[1] is None:
-                filters.append('"%s" %s NULL' % (field_tuple[0],
-                        field_tuple[2]))
+            expressions = [field_tuple[0]]
+            if len(field_tuple) == 3:
+                expressions.append(field_tuple[2])
+
+            if field_tuple[1] is None:
+                expressions.append('NULL')
+
+            elif isinstance(field_tuple[1], Expression):
+                expressions.append(str(field_tuple[1]))
 
             elif isinstance(field_tuple[1], (list, tuple)):
-                if field_tuple[1]:
-                    filters.append('"%s" %s (%s)' % (field_tuple[0],
-                        field_tuple[2], ', '.join([self.schema.PLACEHOLDER] *\
-                        len(field_tuple[1]))))
+                if not field_tuple[1]:
+                    continue
+
+                expressions.append(', '.join([self.schema.PLACEHOLDER] *\
+                        len(field_tuple[1])))
+
             else:
-                filters.append('"%s" %s %s' % (field_tuple[0], field_tuple[2],
-                        self.schema.PLACEHOLDER))
+                expressions.append(self.schema.PLACEHOLDER)
+
+            filters.append(' '.join(expressions))
 
         return self.separator.join(filters)
 
