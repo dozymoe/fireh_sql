@@ -1,4 +1,9 @@
+import logging
+
+from dateutil.parser import parse as dateparse
+
 from .expressions import Expression
+
 
 class SQLFilter(object):
 
@@ -119,3 +124,68 @@ class FilterByMixin(object):
 
         if flts:
             self.filters.append(self.create_and_filter(*flts))
+
+
+    def find_filters(self, data, fields):
+        if data is None:
+            return
+
+        for field in fields:
+            if isinstance(field, (list, tuple)):
+                db_field = field[0]
+                form_field = field[1]
+            else:
+                db_field = form_field = field
+
+            value = data.get(form_field)
+            if value is None or len(value) < 2:
+                continue
+
+            if value[0] == '=':
+                value = value[1:]
+                if value == 'null':
+                    yield (db_field, None, 'IS')
+                else:
+                    yield (db_field, value, '=')
+
+            elif value[0] == '!':
+                value = value[1:]
+                if value == 'null':
+                    yield (db_field, None, 'IS NOT')
+                else:
+                    yield (db_field, value, '<>')
+
+            elif (value[0] == '<' or value[0] == '>')  and value[1] == '=':
+                yield (db_field, value[2:], value[:2])
+
+            elif value[0] == '<' or value[0] == '>':
+                yield (db_field, value[1:], value[0])
+
+            elif value[0] == '%' or value[-1] == '%':
+                yield (db_field, value, 'LIKE')
+
+
+    def find_datetime_filters(self, data, *fields):
+        for filter_ in self.find_filters(data, fields):
+            if filter_[1] is None:
+                yield filter_
+                continue
+
+            try:
+                value = dateparse(filter_[1])
+                yield (filter_[0], value, filter_[2])
+            except (ValueError, OverflowError):
+                logging.exception('Invalid Schema filter.')
+
+
+    def find_numeric_filters(self, data, *fields):
+        for filter_ in self.find_filters(data, fields):
+            if filter_[1] is None:
+                yield filter_
+                continue
+
+            try:
+                value = int(filter_[1])
+                yield (filter_[0], value, filter_[2])
+            except (TypeError, ValueError):
+                logging.exception('Invalid Schema filter.')

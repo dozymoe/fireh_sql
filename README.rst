@@ -24,7 +24,7 @@ Example:
         FIELDS = ('id', 'username', 'email', 'password', 'is_superuser',
                 'is_staff', 'created_at', 'modified_at')
 
-        FILTER_BY_FIELDS = ('id', 'username', 'email')
+        FILTER_BY_FIELDS = ('id', 'username', 'email', 'created_at')
         ORDER_BY_FIELDS = ('username',)
 
         # For PostgreSQL to return last inserted id
@@ -33,6 +33,7 @@ Example:
 
 .. code:: python
 
+    from itertools import chain
     import psycopg2
 
     from .schema import UserSchema
@@ -103,4 +104,37 @@ Example:
                 #     WHERE username = %s
                 #
                 # (True, True, 'User1')
+                cur.execute(str(sql), sql.data)
+
+
+    def filter_parser():
+        sql = UserSchema.create_select_sql()
+
+        data = {
+            'filter_by': {
+                'username': 'User%', # starts and/or ends with '%'
+                'email': '!null',
+                'created_at': '>10-2-2017',
+            }
+        }
+
+        filters = chain(
+            sql.find_filters(data['filter_by'],
+                'username', 'email'),
+
+            sql.find_datetime_filters(data['filter_by'],
+                'created_at'),
+        )
+
+        sql.set_filters(*filters)
+
+        with psycopg2.connect('dbname=testdb') as conn:
+            with conn.cursor() as cur:
+                # SELECT * FROM users WHERE username LIKE %s
+                #     AND email IS NOT NULL
+                #     AND created_at > %s
+                #     LIMIT 10 OFFSET 0
+                #
+                # ('User%', datetime.datetime(2017, 2, 10, 0, 0, 0, 0,
+                #         tzinfo=<UTC>))
                 cur.execute(str(sql), sql.data)
