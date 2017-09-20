@@ -40,7 +40,7 @@ class UpdateSQL(SQL, FilterByMixin):
         ]
 
         expressions = []
-        for key, value in self.fields:
+        for key, value in self.fields.items():
             if isinstance(value, Expression):
                 expressions.append('%s=%s' % (key, str(value)))
             else:
