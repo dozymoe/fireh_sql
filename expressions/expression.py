@@ -1,7 +1,10 @@
 class Expression(object):
 
+    schema = None
+
     def validate_as_field(self, schema):
-        pass
+        schema.validate_field_name(str(self.field))
+        self.schema = schema
 
 
     def validate_as_filter(self, schema):

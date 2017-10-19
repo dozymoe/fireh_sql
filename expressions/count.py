@@ -4,7 +4,6 @@ class Count(Expression):
 
     field = None
     alias = None
-    schema = None
 
     def __init__(self, field, alias=None):
         self.field = field or ''
