@@ -9,10 +9,14 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
     fields = None
     page_size = None
     page_offset = None
+    groupby_exprs = None
+    having_exprs = None
 
     def __init__(self, schema):
         super().__init__(schema=schema)
         self.fields = []
+        self.groupby_exprs = []
+        self.having_exprs = []
 
 
     def clear_fields(self):
@@ -39,15 +43,49 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
             self.page_offset = int(offset)
 
 
+    def set_group_by(self, *expressions):
+        for expression in expressions:
+            if isinstance(expression, str):
+                self.schema.validate_field_name(expression)
+            elif isinstance(expression, Expression):
+                self.schema.validate_as_field(expression)
+            else:
+                raise RuntimeError('SelectSQL.set_group_by ' +\
+                        'only supports field name or expression.')
+
+            self.groupby_exprs.append(expression)
+
+
+    def set_having(self, *expressions):
+        for expression in expressions:
+            if isinstance(expression, Expression):
+                self.schema.validate_as_field(expression)
+            else:
+                raise RuntimeError('SelectSQL.set_having ' +\
+                        'only supports expression.')
+
+            self.having_exprs.append(expression)
+
+
     def get_data(self):
         for field in self.fields:
             if isinstance(field, Expression):
-                for data in field.get_data():
+                for data in field.data:
                     yield data
 
         for filter_ in self.filters:
             for data in filter_.data:
                 yield data
+
+        for expression in self.groupby_exprs:
+            if isinstance(expression, Expression):
+                for data in expression.data:
+                    yield data
+
+        for expression in self.having_exprs:
+            if isinstance(expression, Expression):
+                for data in expression.data:
+                    yield data
 
 
     def __str__(self):
@@ -64,6 +102,14 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
         expression = ' AND '.join(str(filter_) for filter_ in self.filters)
         if expression:
             sql.append('WHERE ' + expression)
+
+        if self.groupby_exprs:
+            sql.append('GROUP BY ' + ', '.join(str(expr) \
+                    for expr in self.groupby_exprs))
+
+        if self.having_exprs:
+            sql.append('HAVING ' + ', '.join(str(expr) \
+                    for expr in self.having_exprs))
 
         expression = ', '.join(self.order_fields)
         if expression:

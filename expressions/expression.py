@@ -17,3 +17,8 @@ class Expression(object):
 
     def __str__(self):
         return ''
+
+
+    @property
+    def data(self):
+        return self.get_data()
