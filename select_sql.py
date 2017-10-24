@@ -48,7 +48,7 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
             if isinstance(expression, str):
                 self.schema.validate_field_name(expression)
             elif isinstance(expression, Expression):
-                self.schema.validate_as_field(expression)
+                expression.validate_as_field(self.schema)
             else:
                 raise RuntimeError('SelectSQL.set_group_by ' +\
                         'only supports field name or expression.')
@@ -59,7 +59,7 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
     def set_having(self, *expressions):
         for expression in expressions:
             if isinstance(expression, Expression):
-                self.schema.validate_as_field(expression)
+                expression.validate_as_field(self.schema)
             else:
                 raise RuntimeError('SelectSQL.set_having ' +\
                         'only supports expression.')

@@ -1,36 +1,39 @@
 from .expressions import Expression
 from .sql import SQL
+from .statements import OnConflictUpdate
 
 
 class InsertSQL(SQL):
 
     fields = None
-    conflict_exprs = None
+    on_conflict = None
 
     def __init__(self, schema):
         super().__init__(schema=schema)
         self.fields = {}
-        self.conflict_exprs = []
+        self.on_conflict = {}
 
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
             self.schema.validate_insert_field_name(key)
             if isinstance(value, Expression):
-                self.schema.validate_as_field(value)
+                value.validate_as_field(self.schema)
 
             self.fields[key] = value
 
 
-    def set_on_conflict(self, *expressions):
-        for expression in expressions:
-            if isinstance(expression, Expression):
-                self.schema.validate_as_field(expression)
-            else:
-                raise RuntimeError('InsertSQL.set_on_conflict ' +\
-                        'only supports expression.')
+    def create_on_conflict_statement(self):
+        return OnConflictUpdate(self.schema)
 
-        self.conflict_exprs = expressions
+
+    def set_on_conflict(self, trigger, statement):
+        self.schema.validate_insert_field_name(trigger)
+
+        if statement is None:
+            self.on_conflict[trigger] = 'DO NOTHING'
+        else:
+            self.on_conflict[trigger] = statement
 
 
     def get_data(self):
@@ -41,9 +44,12 @@ class InsertSQL(SQL):
             else:
                 yield value
 
-        for expression in self.conflict_exprs:
-            for data in expression.data:
-                yield data
+        for statement in self.on_conflict.values():
+            try:
+                for data in statement.data:
+                    yield data
+            except AttributeError:
+                pass
 
 
     def __str__(self):
@@ -60,8 +66,8 @@ class InsertSQL(SQL):
                 values.append(self.schema.PLACEHOLDER)
         sql.append('VALUES (%s)' % ', '.join(values))
 
-        for expression in self.conflict_exprs:
-            sql.append('ON CONFLICT ' + str(expression))
+        for trigger, statement in self.on_conflict.items():
+            sql.append('ON CONFLICT (%s) %s' % (trigger, str(statement)))
 
         if self.schema.RETURNING_FIELDS:
             sql.append('RETURNING ' + ', '.join(self.schema.RETURNING_FIELDS))

@@ -1,5 +1,3 @@
-import re
-
 from .expression import Expression
 
 class Generic(Expression):
@@ -10,17 +8,17 @@ class Generic(Expression):
         sql = Schema.create_update_sql()
         sql.set_values(
             average=Generic(
-                '({field} + {value}) / 2', # field and value are reserved words
-                'average',                 # table field to change
-                123                        # the value; can also be list, tuple
-                                           # or None
+                '({f} + {v}) / 2', # f == field and v == value
+                                   # both are reserved words
+                'average',         # the table's field to change
+                123                # the value; can also be list, tuple or None
             ),
             total=Generic(
-                '{field.0} * {field.1}',
+                '{f0} * {f1}',
                 ['price', count'],
             ),
             price=Generic(
-                '{field} - {value} - {value}',
+                '{f} - {v} - {v}',
                 'price',
                 [20, 10],
             ),
@@ -53,7 +51,7 @@ class Generic(Expression):
             for field in self.fields:
                 schema.validate_field_name(field)
 
-        self.expression = re.sub(r'{\s*field\s*}', '{field.0}')
+        self.expression = self.expression.replace('{f}', '{f0}')
 
         if isinstance(self.values, str):
             self.values = [self.values]
@@ -72,13 +70,13 @@ class Generic(Expression):
 
         if self.fields:
             for ii, field in enumerate(self.fields):
-                replacement['field.%i' % ii] = field
+                replacement['f%i' % ii] = field
 
         if self.values:
-            replacement['value'] = self.schema.PLACEHOLDER
+            replacement['v'] = self.schema.PLACEHOLDER
 
         if replacement:
-            expr = self.expression % replacement
+            expr = self.expression.format(**replacement)
         else:
             expr = self.expression
 
