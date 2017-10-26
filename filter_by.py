@@ -17,7 +17,10 @@ class SQLFilter(object):
 
 
     def add(self, field_tuple):
-        if isinstance(field_tuple, SQLFilter):
+        if field_tuple is None:
+            pass
+
+        elif isinstance(field_tuple, SQLFilter):
             self.fields.append(field_tuple)
 
         elif isinstance(field_tuple, (list, tuple)):
@@ -40,7 +43,7 @@ class SQLFilter(object):
             elif field_tuple[1] is None:
                 pass
             elif isinstance(field_tuple[1], Expression):
-                for data in field_tuple[1].get_data():
+                for data in field_tuple[1].data:
                     yield data
             elif isinstance(field_tuple[1], (list, tuple)):
                 for data in field_tuple[1]:
@@ -72,9 +75,8 @@ class SQLFilter(object):
                 if not field_tuple[1]:
                     continue
 
-                expressions.append(', '.join([self.schema.PLACEHOLDER] *\
-                        len(field_tuple[1])))
-
+                expressions.append('(%s)' % ', '.join(
+                        [self.schema.PLACEHOLDER] * len(field_tuple[1])))
             else:
                 expressions.append(self.schema.PLACEHOLDER)
 
@@ -126,8 +128,126 @@ class FilterByMixin(object):
             self.filters.append(self.create_and_filter(*flts))
 
 
+    def parse_adv_filters(self, data, fields):
+        if not data:
+            return
+
+        if isinstance(fields, dict):
+            field_map = fields
+
+        elif isinstance(fields, (list, tuple)):
+            field_map = {}
+            for field in fields:
+                if isinstance(field, (list, tuple)):
+                    if len(field) == 3:
+                        field_map[field[1]] = (field[0], field[2])
+                    elif len(field) == 2:
+                        field_map[field[0]] = (field[0], field[1])
+                    else:
+                        field_map[field[0]] = (field[0], 'str')
+                else:
+                    field_map[field] = (field, 'str')
+        else:
+            return
+
+        if isinstance(data, dict):
+            return self._parse_adv_keyval(data, field_map)
+
+        elif isinstance(data, (list, tuple)):
+            if data[0] == 'OR':
+                filter_ = self.create_or_filter()
+                data.pop(0)
+            else:
+                filter_ = self.create_and_filter()
+                if data[0] == 'AND':
+                    data.pop(0)
+
+            for item in data:
+                if isinstance(item, dict):
+                    filter_.add(self._parse_adv_keyval(item, field_map))
+
+                elif isinstance(item, (list, tuple)):
+                    filter_.add(self.parse_adv_filters(item, field_map))
+
+            return filter_
+
+
+    def _parse_adv_keyval(self, data, field_map):
+        filter_ = self.create_and_filter()
+
+        for key, value in data.items():
+            if not key in field_map:
+                continue
+
+            db_field, type_ = field_map[key]
+
+            if isinstance(value, (list, tuple)):
+                if value[0] == '!':
+                    operator = 'NOT IN'
+                    value.pop(0)
+                else:
+                    operator = 'IN'
+                    if value[0] == '=':
+                        value.pop(0)
+
+                value = [self._parse_adv_value(v, type_) for v in value]
+                filter_.add((db_field, value, operator))
+                continue
+
+            if value is None or len(value) < 2:
+                continue
+
+            if value[0] == '=':
+                value = value[1:]
+                if value == 'null':
+                    filter_.add((db_field, None, 'IS'))
+                else:
+                    value = self._parse_adv_value(value, type_)
+                    filter_.add((db_field, value, '='))
+
+            elif value[0] == '!':
+                value = value[1:]
+                if value == 'null':
+                    filter_.add((db_field, None, 'IS NOT'))
+                else:
+                    value = self._parse_adv_value(value, type_)
+                    filter_.add((db_field, value, '<>'))
+
+            elif (value[0] == '<' or value[0] == '>')  and value[1] == '=':
+                operator = value[:2]
+                value = self._parse_adv_value(value[2:], type_)
+                filter_.add((db_field, value, operator))
+
+            elif value[0] == '<' or value[0] == '>':
+                operator = value[0]
+                value = self._parse_adv_value(value[1:], type_)
+                filter_.add((db_field, value, operator))
+
+            elif value[0] == '%' or value[-1] == '%':
+                value = self._parse_adv_value(value, 'str')
+                filter_.add((db_field, value, 'LIKE'))
+
+        return filter_
+
+
+    def _parse_adv_value(self, value, type_):
+        try:
+            if value is None:
+                return None
+            elif type_ == 'str':
+                return str(value)
+            elif type_ == 'int':
+                return int(value)
+            elif type_ == 'date':
+                return dateparse(value)
+
+            return value
+        except (TypeError, ValueError, OverflowError):
+            logging.exception('Invalid Schema filter.')
+
+
     def find_filters(self, data, fields):
-        if data is None:
+        if not data:
             return
 
         for field in fields:

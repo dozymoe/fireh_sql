@@ -11,6 +11,7 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
     page_offset = None
     groupby_exprs = None
     having_exprs = None
+    distinct_field = None
 
     def __init__(self, schema):
         super().__init__(schema=schema)
@@ -21,6 +22,11 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
     def clear_fields(self):
         self.fields = []
+
+
+    def set_distinct(self, field):
+        self.schema.validate_order_field_name(field)
+        self.distinct_field = field
 
 
     def set_fields(self, *fields):
@@ -89,19 +95,31 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
 
     def __str__(self):
+        sql = ['SELECT']
+
+        if self.distinct_field:
+            sql.append('DISTINCT ON (%s)' % self.distinct_field)
+
+            try:
+                self.order_fields.remove(self.distinct_field)
+            except ValueError:
+                pass
+            self.order_fields.insert(0, self.distinct_field)
+
         if self.fields:
-            fields = ', '.join(str(f) for f in self.fields)
+            sql.append(', '.join(str(f) for f in self.fields))
         else:
-            fields = '*'
+            sql.append('*')
 
-        sql = [
-            'SELECT ' + fields,
-            'FROM ' + self.schema.TABLE_NAME,
-        ]
+        sql.append('FROM ' + self.schema.TABLE_NAME)
 
-        expression = ' AND '.join(str(filter_) for filter_ in self.filters)
-        if expression:
-            sql.append('WHERE ' + expression)
+        if self.filters:
+            if len(self.filters) > 1:
+                filter_ = self.create_and_filter(*self.filters)
+            else:
+                filter_ = self.filters[0]
+
+            sql.append('WHERE ' + str(filter_))
 
         if self.groupby_exprs:
             sql.append('GROUP BY ' + ', '.join(str(expr) \

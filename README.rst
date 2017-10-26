@@ -68,8 +68,7 @@ Example:
 
         # Assumed DESCENDING if it was prefixed with hyphen (-), the target
         # being http query string.
-        for sort_field in ('username', '-id'):
-            sql.add_order_by(sort_field)
+        sql.set_sorting_order('username', '-id')
 
         page_size = 10
         page = 1
@@ -108,6 +107,9 @@ Example:
 
 
     def filter_parser():
+
+        # This is targetted at http query string
+
         sql = UserSchema.create_select_sql()
 
         data = {
@@ -137,4 +139,63 @@ Example:
                 #
                 # ('User%', datetime.datetime(2017, 2, 10, 0, 0, 0, 0,
                 #         tzinfo=<UTC>))
+                cur.execute(str(sql), sql.data)
+
+
+    def advance_filter_parser():
+        sql = UserSchema.create_select_sql()
+
+        data = {
+            'filter_by': [
+                'AND',
+                [
+                    'OR',
+                    {'name': 'User%'},
+                    {'name': '%User'},
+                ],
+                [
+                    'OR',
+                    {'email': '!null'},
+                    {'email': '=admin@example.com'},
+                },
+                {'created_at': '>10-2-2017'},
+                {
+                    'id': ['=', 1, 2, 3],
+                },
+                {
+                    'id': ['!', 4, 5, 6],
+                },
+            }
+        }
+
+        advanced_filter = sql.parse_adv_filters(
+            data['filter_by'],
+            (
+                ('username', 'name', 'str'),
+                ('email', 'str'),
+                ('created_at', 'date'),
+                ('id', 'int'),
+            ))
+
+        sql.set_filters(advanced_filter)
+
+        with psycopg2.connect('dbname=testdb') as conn:
+            with conn.cursor() as cur:
+                # SELECT * FROM users WHERE
+                #     (username LIKE %s OR username LIKE %s)
+                #     AND
+                #     (email IS NOT NULL OR email = %s)
+                #     AND
+                #     created_at > %s
+                #     AND
+                #     id IN (%s, %s, %s)
+                #     AND
+                #     id NOT IN (%s, %s, %s)
+                #     LIMIT 10 OFFSET 0
+                #
+                # (
+                #     'User%', '%User', 'admin@example.com',
+                #     datetime(2017, 2, 10, 0, 0, 0, 0, tzinfo=<UTC>),
+                #     1, 2, 3, 4, 5, 6,
+                # )
                 cur.execute(str(sql), sql.data)
