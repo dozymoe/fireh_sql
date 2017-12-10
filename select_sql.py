@@ -135,6 +135,6 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
         if self.page_size and self.page_size > 0:
             sql.append('LIMIT %i OFFSET %i' % (self.page_size,
-                    self.page_offset))
+                    self.page_offset or 0))
 
         return ' '.join(sql)
