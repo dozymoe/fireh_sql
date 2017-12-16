@@ -1,3 +1,4 @@
+from ..field import Field
 from .expression import Expression
 
 class Generic(Expression):
@@ -26,37 +27,57 @@ class Generic(Expression):
 
     """
     fields = None
-    alias = None
     expression = None
     values = None
 
     def __init__(self, expression, fields=None, values=None, alias=None):
+        super().__init__(None)
+
         self.fields = fields
         self.alias = alias
         self.expression = expression
         self.values = values
 
+        self.expression = self.expression.replace('{f}', '{f0}')
 
-    def validate_as_field(self, schema):
-        if schema.PLACEHOLDER in self.expression:
-            raise ValueError('Invalid characters: ' + schema.PLACEHOLDER +\
+        if isinstance(values, str):
+            self.values = [values]
+        else:
+            self.values = values
+
+
+    def validate_as_field(self, sql):
+        self.sql = sql
+
+        if sql.schema.PLACEHOLDER in self.expression:
+            raise ValueError('Invalid characters: ' + sql.schema.PLACEHOLDER +\
                     ' in expression: "' + self.expression + '"' +\
-                    ' for table: ' + schema.TABLE_NAME + '.')
+                    ' for table: ' + sql.schema.TABLE_NAME + '.')
 
-        if isinstance(self.fields, str):
-            schema.validate_field_name(self.fields)
+        if isinstance(self.fields, (str, Field)):
+            sql.validate_field_name(str(self.fields))
 
             self.fields = [self.fields]
         elif isinstance(self.fields, (list, tuple)):
             for field in self.fields:
-                schema.validate_field_name(field)
+                sql.validate_field_name(str(field))
 
-        self.expression = self.expression.replace('{f}', '{f0}')
 
-        if isinstance(self.values, str):
-            self.values = [self.values]
+    def validate_as_filter(self, sql):
+        self.sql = sql
 
-        self.schema = schema
+        if sql.schema.PLACEHOLDER in self.expression:
+            raise ValueError('Invalid characters: ' + sql.schema.PLACEHOLDER +\
+                    ' in expression: "' + self.expression + '"' +\
+                    ' for table: ' + sql.schema.TABLE_NAME + '.')
+
+        if isinstance(self.fields, (str, Field)):
+            sql.validate_filter_field_name(str(self.fields))
+
+            self.fields = [self.fields]
+        elif isinstance(self.fields, (list, tuple)):
+            for field in self.fields:
+                sql.validate_filter_field_name(str(field))
 
 
     def get_data(self):
@@ -70,7 +91,7 @@ class Generic(Expression):
 
         if self.fields:
             for ii, field in enumerate(self.fields):
-                replacement['f%i' % ii] = field
+                replacement['f%i' % ii] = self.sql.altname(field)
 
         if self.values:
             replacement['v'] = self.schema.PLACEHOLDER

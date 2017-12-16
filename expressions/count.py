@@ -2,22 +2,23 @@ from .expression import Expression
 
 class Count(Expression):
 
-    field = None
-    alias = None
-
-    def __init__(self, field, alias=None):
-        self.field = field or ''
-        self.alias = alias
+    def validate_as_field(self, sql):
+        self.sql = sql
+        if self.field != '*':
+            sql.schema.validate_field_name(str(self.field))
 
 
-    def validate_as_field(self, schema):
-        if self.field and self.field != '*':
-            schema.validate_field_name(str(self.field))
-        self.schema = schema
+    def _get_field_name(self):
+        if self.field == '*':
+            return self.field
+
+        return self.sql.absname(self.field)
 
 
     def __str__(self):
-        expr = 'COUNT(%s)' % str(self.field)
+        assert self.sql is not None
+
+        expr = 'COUNT(%s)' % self._get_field_name()
 
         if self.alias:
             expr += ' AS ' + self.alias

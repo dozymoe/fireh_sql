@@ -1,10 +1,10 @@
 class OrderByMixin(object):
 
-    order_fields = None
+    _order_fields = None
 
     def __init__(self):
         super().__init__()
-        self.order_fields = []
+        self._order_fields = []
 
 
     def set_sorting_order(self, *expressions):
@@ -15,15 +15,26 @@ class OrderByMixin(object):
             else:
                 field = expression
 
-            self.schema.validate_order_field_name(field)
+            # This is a mixin, so self.schema came from SQL
+            self.validate_order_field_name(field)
+            self._order_fields.append((field, is_desc))
+
+
+    @property
+    def order_fields(self):
+        return list(self.get_order_fields())
+
+
+    def get_order_fields(self):
+        for field, is_desc in self._order_fields:
             if is_desc:
-                self.order_fields.append(field + ' DESC')
+                yield str(field) + ' DESC'
             else:
-                self.order_fields.append(field)
+                yield str(field)
 
 
     def clear_order_by(self):
-        self.order_fields = []
+        self._order_fields = []
 
 
     def find_sorting_order(self, data, fields):

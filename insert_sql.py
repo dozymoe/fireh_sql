@@ -8,8 +8,8 @@ class InsertSQL(SQL):
     fields = None
     on_conflict = None
 
-    def __init__(self, schema):
-        super().__init__(schema=schema)
+    def __init__(self, schema, alias):
+        super().__init__(schema=schema, alias=alias)
         self.fields = {}
         self.on_conflict = {}
 

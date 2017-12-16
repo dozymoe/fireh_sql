@@ -1,14 +1,23 @@
 class Expression(object):
 
-    schema = None
-
-    def validate_as_field(self, schema):
-        schema.validate_field_name(str(self.field))
-        self.schema = schema
+    sql = None
+    field = None
+    alias = None
 
 
-    def validate_as_filter(self, schema):
-        self.validate_as_field(schema)
+    def __init__(self, field, alias=None):
+        self.field = field
+        self.alias = alias
+
+
+    def validate_as_field(self, sql):
+        self.sql = sql
+        sql.validate_field_name(self.field)
+
+
+    def validate_as_filter(self, sql):
+        self.sql = sql
+        sql.validate_filter_field_name(self.field)
 
 
     def get_data(self):

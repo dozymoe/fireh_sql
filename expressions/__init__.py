@@ -1,7 +1,6 @@
 from .average import Average
 from .count import Count
 from .expression import Expression
-from .field import Field
 from .generic import Generic
 from .maximum import Maximum
 from .minimum import Minimum

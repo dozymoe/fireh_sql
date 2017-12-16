@@ -1,18 +1,18 @@
 import logging
-
 from dateutil.parser import parse as dateparse
 
 from .expressions import Expression
+from .field import Field
 
 
 class SQLFilter(object):
 
-    schema = None
+    sql = None
     fields = None
     separator = ' AND '
 
-    def __init__(self, schema):
-        self.schema = schema
+    def __init__(self, sql):
+        self.sql = sql
         self.fields = []
 
 
@@ -24,11 +24,24 @@ class SQLFilter(object):
             self.fields.append(field_tuple)
 
         elif isinstance(field_tuple, (list, tuple)):
-            self.schema.validate_filter_field_name(field_tuple[0])
-            if isinstance(field_tuple[1], Expression):
-                field_tuple[1].validate_as_filter(self.schema)
+            if isinstance(field_tuple[0], Field):
+                field = field_tuple[0]
+            else:
+                field = self.sql.field(field_tuple[0])
+            self.sql.validate_filter_field_name(field)
 
-            self.fields.append(field_tuple)
+            value = field_tuple[1]
+            if isinstance(value, Field):
+                self.sql.validate_filter_field_name(value)
+            elif isinstance(value, Expression):
+                value.validate_as_filter(self.sql)
+
+            if len(field_tuple) > 2:
+                operator = field_tuple[2]
+            else:
+                operator = '='
+
+            self.fields.append((field, value, operator))
 
         else:
             raise TypeError('Expecting SQLFilter, list, or tuple.')
@@ -42,6 +55,8 @@ class SQLFilter(object):
                     yield data
             elif field_tuple[1] is None:
                 pass
+            elif isinstance(field_tuple[1], Field):
+                pass
             elif isinstance(field_tuple[1], Expression):
                 for data in field_tuple[1].data:
                     yield data
@@ -54,33 +69,40 @@ class SQLFilter(object):
 
     def __str__(self):
         filters = []
+        # field_tuple: (field_name, value, operator) or SQLFilter
         for field_tuple in self.fields:
             if isinstance(field_tuple, SQLFilter):
                 filter_expression = str(field_tuple)
                 if filter_expression:
-                    filters.append('(%s)' % filter_expression)
+                    if len(field_tuple.fields) > 1:
+                        filters.append('(%s)' % filter_expression)
+                    else:
+                        filters.append(filter_expression)
                 continue
 
-            expressions = [field_tuple[0]]
+            expression = [str(field_tuple[0])]
             if len(field_tuple) == 3:
-                expressions.append(field_tuple[2])
+                expression.append(field_tuple[2])
 
             if field_tuple[1] is None:
-                expressions.append('NULL')
+                expression.append('NULL')
+
+            elif isinstance(field_tuple[1], Field):
+                expression.append(str(field_tuple[1]))
 
             elif isinstance(field_tuple[1], Expression):
-                expressions.append(str(field_tuple[1]))
+                expression.append(str(field_tuple[1]))
 
             elif isinstance(field_tuple[1], (list, tuple)):
                 if not field_tuple[1]:
                     continue
 
-                expressions.append('(%s)' % ', '.join(
-                        [self.schema.PLACEHOLDER] * len(field_tuple[1])))
+                expression.append('(%s)' % ', '.join(
+                        [self.sql.schema.PLACEHOLDER] * len(field_tuple[1])))
             else:
-                expressions.append(self.schema.PLACEHOLDER)
+                expression.append(self.sql.schema.PLACEHOLDER)
 
-            filters.append(' '.join(expressions))
+            filters.append(' '.join(expression))
 
         return self.separator.join(filters)
 
@@ -101,7 +123,7 @@ class FilterByMixin(object):
 
 
     def create_and_filter(self, *fields):
-        filter_ = AndSQLFilter(self.schema)
+        filter_ = AndSQLFilter(self)
         for field in fields:
             filter_.add(field)
 
@@ -109,7 +131,7 @@ class FilterByMixin(object):
 
 
     def create_or_filter(self, *fields):
-        filter_ = OrSQLFilter(self.schema)
+        filter_ = OrSQLFilter(self)
         for field in fields:
             filter_.add(field)
 

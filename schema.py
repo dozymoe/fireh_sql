@@ -2,6 +2,7 @@ from .delete_sql import DeleteSQL
 from .insert_sql import InsertSQL
 from .select_sql import SelectSQL
 from .update_sql import UpdateSQL
+from .join_sql import JoinSQL
 
 
 class SchemaBase(object):
@@ -23,6 +24,7 @@ class SchemaBase(object):
     INSERT_SQL_CLASS = InsertSQL
     SELECT_SQL_CLASS = SelectSQL
     UPDATE_SQL_CLASS = UpdateSQL
+    JOIN_SQL_CLASS = JoinSQL
 
     PLACEHOLDER = '%s' # used by psycopg2, and '?' for sqlite3
     RETURNING_FIELDS = () # fields in postgresql RETURNING clause
@@ -34,24 +36,28 @@ class SchemaBase(object):
 
 
     @classmethod
-    def create_delete_sql(cls):
-        return cls.DELETE_SQL_CLASS(cls)
+    def create_delete_sql(cls, alias=None):
+        return cls.DELETE_SQL_CLASS(cls, alias)
 
 
     @classmethod
-    def create_insert_sql(cls):
-        return cls.INSERT_SQL_CLASS(cls)
+    def create_insert_sql(cls, alias=None):
+        return cls.INSERT_SQL_CLASS(cls, alias)
 
 
     @classmethod
-    def create_select_sql(cls):
-        return cls.SELECT_SQL_CLASS(cls)
+    def create_select_sql(cls, alias=None):
+        return cls.SELECT_SQL_CLASS(cls, alias)
 
 
     @classmethod
-    def create_update_sql(cls):
-        return cls.UPDATE_SQL_CLASS(cls)
+    def create_update_sql(cls, alias=None):
+        return cls.UPDATE_SQL_CLASS(cls, alias)
 
+
+    @classmethod
+    def create_join_sql(cls, alias=None):
+        return cls.JOIN_SQL_CLASS(cls, alias)
 
     @classmethod
     def validate_field_name(cls, name):
@@ -74,7 +80,7 @@ class SchemaBase(object):
     @classmethod
     def validate_select_field_name(cls, name):
         is_valid = (cls.SELECT_FIELDS and name in cls.SELECT_FIELDS) or\
-                (not cls.SELECT_FIELDS and name in cls.FIELDS)
+                (not cls.SELECT_FIELDS and name in cls.FIELDS) or name == '*'
 
         if not is_valid:
             raise ValueError('Invalid SELECT field: %s for table: %s.' % (
