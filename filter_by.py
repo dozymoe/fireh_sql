@@ -152,7 +152,7 @@ class FilterByMixin(object):
 
     def parse_adv_filters(self, data, fields):
         if not data:
-            return
+            return None
 
         if isinstance(fields, dict):
             field_map = fields
@@ -170,7 +170,7 @@ class FilterByMixin(object):
                 else:
                     field_map[field] = (field, 'str')
         else:
-            return
+            return None
 
         if isinstance(data, dict):
             return self._parse_adv_keyval(data, field_map)
@@ -192,6 +192,8 @@ class FilterByMixin(object):
                     filter_.add(self.parse_adv_filters(item, field_map))
 
             return filter_
+
+        return None
 
 
     def _parse_adv_keyval(self, data, field_map):
