@@ -189,7 +189,9 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
             else:
                 filter_ = filters[0]
 
-            sql.append('WHERE ' + str(filter_))
+            filter_ = str(filter_)
+            if filter_:
+                sql.append('WHERE ' + filter_)
 
         if self.groupby_exprs:
             sql.append('GROUP BY ' + ', '.join(str(expr) \

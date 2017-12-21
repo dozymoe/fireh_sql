@@ -54,6 +54,8 @@ class UpdateSQL(SQL, FilterByMixin):
             else:
                 filter_ = self.filters[0]
 
-            sql.append('WHERE ' + str(filter_))
+            filter_ = str(filter_)
+            if filter_:
+                sql.append('WHERE ' + filter_)
 
         return ' '.join(sql)
