@@ -46,8 +46,8 @@ class SchemaBase(object):
 
 
     @classmethod
-    def create_select_sql(cls, alias=None):
-        return cls.SELECT_SQL_CLASS(cls, alias)
+    def create_select_sql(cls, alias=None, vtable=None):
+        return cls.SELECT_SQL_CLASS(cls, alias, vtable)
 
 
     @classmethod
@@ -56,8 +56,9 @@ class SchemaBase(object):
 
 
     @classmethod
-    def create_join_sql(cls, alias=None):
-        return cls.JOIN_SQL_CLASS(cls, alias)
+    def create_join_sql(cls, alias=None, vtable=None):
+        return cls.JOIN_SQL_CLASS(cls, alias, vtable)
+
 
     @classmethod
     def validate_field_name(cls, name):

@@ -11,9 +11,9 @@ class OrderByMixin(object):
         for expression in expressions:
             is_desc = expression.startswith('-')
             if is_desc:
-                field = expression[1:]
+                field = self.field(expression[1:])
             else:
-                field = expression
+                field = self.field(expression)
 
             # This is a mixin, so self.schema came from SQL
             self.validate_order_field_name(field)

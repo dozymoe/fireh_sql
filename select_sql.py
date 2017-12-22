@@ -7,6 +7,8 @@ from .sql import SQL
 
 class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
+    vtable = None
+
     fields = None
     page_size = None
     page_offset = None
@@ -14,8 +16,9 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
     having_exprs = None
     distinct_field = None
 
-    def __init__(self, schema, alias):
+    def __init__(self, schema, alias, vtable):
         super().__init__(schema=schema, alias=alias)
+        self.vtable = vtable
         self.fields = []
         self.groupby_exprs = []
         self.having_exprs = []
@@ -26,8 +29,15 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
 
     def set_distinct(self, field):
+        if isinstance(field, str):
+            field = self.field(field)
+
         self.validate_order_field_name(field)
         self.distinct_field = field
+        self._order_fields = [o for o in self._order_fields\
+                if str(o[0]) != str(field)]
+
+        self._order_fields.insert(0, (field, False))
 
 
     def set_fields(self, *fields):
@@ -58,8 +68,11 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
 
     def set_group_by(self, *expressions):
         for expression in expressions:
-            if isinstance(expression, str):
+            if isinstance(expression, Field):
                 self.validate_field_name(expression)
+            elif isinstance(expression, str):
+                self.validate_field_name(expression)
+                expression = self.field(expression)
             elif isinstance(expression, Expression):
                 expression.validate_as_field(self)
             else:
@@ -114,6 +127,10 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
         for data in self.get_render_fields_data():
             yield data
 
+        if self.vtable:
+            for data in self.vtable.data:
+                yield data
+
         for key, relation in self.relation.items():
             if key != self.name:
                 for data in relation.data:
@@ -164,16 +181,14 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
         sql = ['SELECT']
 
         if self.distinct_field:
-            sql.append('DISTINCT ON (%s)' % self.distinct_field)
-            try:
-                self.order_fields.remove(self.distinct_field)
-            except ValueError:
-                pass
-            self.order_fields.insert(0, self.distinct_field)
+            sql.append('DISTINCT ON (%s)' % str(self.distinct_field))
 
         sql.append(self.render_fields())
 
-        sql.append('FROM ' + self.schema.TABLE_NAME)
+        if self.vtable:
+            sql.append('FROM (%s)' % str(self.vtable))
+        else:
+            sql.append('FROM ' + self.schema.TABLE_NAME)
 
         if self.alias:
             sql.append(self.alias)

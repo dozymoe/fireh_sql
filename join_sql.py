@@ -9,8 +9,8 @@ class JoinSQL(SelectSQL):
     join_filters = None
 
 
-    def __init__(self, schema, alias):
-        super().__init__(schema, alias)
+    def __init__(self, schema, alias, vtable):
+        super().__init__(schema, alias, vtable)
         self.join_filters = []
 
 
@@ -46,6 +46,10 @@ class JoinSQL(SelectSQL):
 
 
     def get_data(self):
+        if self.vtable:
+            for data in self.vtable.data:
+                yield data
+
         for filter_ in self.join_filters:
             for data in filter_.data:
                 yield data
@@ -57,7 +61,12 @@ class JoinSQL(SelectSQL):
 
 
     def __str__(self):
-        sql = [self.join_type, self.schema.TABLE_NAME]
+        sql = [self.join_type]
+
+        if self.vtable:
+            sql.append('(%s)' % str(self.vtable))
+        else:
+            sql.append(self.schema.TABLE_NAME)
 
         if self.alias:
             sql.append(self.alias)
