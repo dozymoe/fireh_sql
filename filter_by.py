@@ -118,7 +118,7 @@ class FilterByMixin(object):
     filters = None
 
     def __init__(self):
-        super().__init__()
+        super(FilterByMixin, self).__init__()
         self.filters = []
 
 

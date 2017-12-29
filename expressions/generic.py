@@ -31,7 +31,7 @@ class Generic(Expression):
     values = None
 
     def __init__(self, expression, fields=None, values=None, alias=None):
-        super().__init__(None)
+        super(Generic, self).__init__(None)
 
         self.fields = fields
         self.alias = alias

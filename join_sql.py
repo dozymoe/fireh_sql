@@ -10,7 +10,7 @@ class JoinSQL(SelectSQL):
 
 
     def __init__(self, schema, alias, vtable):
-        super().__init__(schema, alias, vtable)
+        super(JoinSQL, self).__init__(schema, alias, vtable)
         self.join_filters = []
 
 
@@ -33,7 +33,7 @@ class JoinSQL(SelectSQL):
 
     def find_relation(self, name):
         # overrides one from SQL
-        relation = super().find_relation(name)
+        relation = super(JoinSQL, self).find_relation(name)
         if relation:
             return relation
 

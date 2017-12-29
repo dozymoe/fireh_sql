@@ -9,14 +9,14 @@ class InsertSQL(SQL):
     on_conflict = None
 
     def __init__(self, schema, alias):
-        super().__init__(schema=schema, alias=alias)
+        super(InsertSQL, self).__init__(schema=schema, alias=alias)
         self.fields = {}
         self.on_conflict = {}
 
 
     def set_values(self, **kwargs):
         for key, value in kwargs.items():
-            self.schema.validate_insert_field_name(key)
+            self.validate_insert_field_name(key)
             if isinstance(value, Expression):
                 value.validate_as_field(self.schema)
 
@@ -28,7 +28,7 @@ class InsertSQL(SQL):
 
 
     def set_on_conflict(self, trigger, statement):
-        self.schema.validate_insert_field_name(trigger)
+        self.validate_insert_field_name(trigger)
 
         if statement is None:
             self.on_conflict[trigger] = 'DO NOTHING'

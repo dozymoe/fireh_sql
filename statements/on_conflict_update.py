@@ -15,8 +15,14 @@ class OnConflictUpdate(UpdateSQL):
         if expressions:
             sql.append('SET ' + ', '.join(expressions))
 
-        expression = ' AND '.join(str(filter_) for filter_ in self.filters)
-        if expression:
-            sql.append('WHERE ' + expression)
+        if self.filters:
+            if len(self.filters) > 1:
+                filter_ = self.create_and_filter(*self.filters)
+            else:
+                filter_ = self.filters[0]
+
+            filter_ = str(filter_)
+            if filter_:
+                sql.append('WHERE ' + filter_)
 
         return ' '.join(sql)

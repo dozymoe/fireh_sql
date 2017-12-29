@@ -3,7 +3,7 @@ class OrderByMixin(object):
     _order_fields = None
 
     def __init__(self):
-        super().__init__()
+        super(OrderByMixin, self).__init__()
         self._order_fields = []
 
 

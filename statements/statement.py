@@ -9,6 +9,7 @@ class Statement(object):
     def get_data(self):
         return []
 
+
     def __str__(self):
         return ''
 

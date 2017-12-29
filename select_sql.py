@@ -17,7 +17,7 @@ class SelectSQL(SQL, FilterByMixin, OrderByMixin):
     distinct_field = None
 
     def __init__(self, schema, alias, vtable):
-        super().__init__(schema=schema, alias=alias)
+        super(SelectSQL, self).__init__(schema=schema, alias=alias)
         self.vtable = vtable
         self.fields = []
         self.groupby_exprs = []

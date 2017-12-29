@@ -9,7 +9,7 @@ class SQL(object):
     relation = None # connected SQL
 
     def __init__(self, schema, alias=None):
-        super().__init__()
+        super(SQL, self).__init__()
         self.schema = schema
         self.alias = alias
         self.relation = OrderedDict([(self.name, self)])
