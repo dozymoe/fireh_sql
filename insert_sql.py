@@ -24,7 +24,7 @@ class InsertSQL(SQL):
 
 
     def create_on_conflict_statement(self):
-        return OnConflictUpdate(self.schema)
+        return OnConflictUpdate(schema=self.schema, alias=self.alias)
 
 
     def set_on_conflict(self, trigger, statement):
@@ -67,7 +67,7 @@ class InsertSQL(SQL):
         sql.append('VALUES (%s)' % ', '.join(values))
 
         for trigger, statement in self.on_conflict.items():
-            sql.append('ON CONFLICT (%s) %s' % (trigger, str(statement)))
+            sql.append('ON CONFLICT (%s) %s' % (str(trigger), str(statement)))
 
         if self.schema.RETURNING_FIELDS:
             sql.append('RETURNING ' + ', '.join(self.schema.RETURNING_FIELDS))
