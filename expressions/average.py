@@ -3,7 +3,7 @@ from .expression import Expression
 class Average(Expression):
 
     def __str__(self):
-        expr = 'AVG(%s)' % self.sql.absname(self.field)
+        expr = 'AVG(%s)' % self.field.id
 
         if self.alias:
             expr += ' AS ' + self.alias

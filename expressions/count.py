@@ -12,7 +12,7 @@ class Count(Expression):
         if self.field == '*':
             return self.field
 
-        return self.sql.absname(self.field)
+        return self.field.id
 
 
     def __str__(self):
